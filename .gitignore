@@ -1,0 +1,12 @@
+# Archivos de compilación
+bin/
+obj/
+
+# Archivos de logs
+*.log
+
+# Directorios de dependencias de Node.js (si usas npm/yarn para frontend)
+node_modules/
+
+# Archivos temporales de Visual Studio Code
+.vscode/
