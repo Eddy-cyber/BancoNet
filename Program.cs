@@ -1,51 +1,53 @@
-using Microsoft.EntityFrameworkCore;
 using BancoNet.Models;
+using Microsoft.EntityFrameworkCore;
 
-var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<AppDbContext>(Options =>
-    Options.UseMySql(builder.Configuration.GetConnectionString("AppDbContext"),
-        new MySqlServerVersion(new Version(8,0,34)))
-        .EnableDetailedErrors());
-
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+namespace BancoNet
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-app.UseHttpsRedirection();
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseInMemoryDatabase("BancoNetInMemoryDb"));
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+            builder.Services.AddControllers();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
-app.Run();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReactApp",
+                policy =>
+                {
+                    policy.WithOrigins("http://localhost:3000")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+
+            var app = builder.Build();
+
+            app.UseCors("AllowReactApp");
+
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BancoNet API v1");
+                    c.RoutePrefix = string.Empty;
+                });
+            }
+
+            app.UseHttpsRedirection();
+
+            app.MapControllers();
+
+            app.Run();
+        }
+    }
 }

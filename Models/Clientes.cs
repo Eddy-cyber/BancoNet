@@ -18,7 +18,20 @@ namespace BancoNet.Models
         [Column(TypeName = "DATE")]
         public DateTime Nacimiento { get; set; }
 
-        public int Edad => DateTime.Today.Year - Nacimiento.Year - (Nacimiento.Date > DateTime.Today.AddYears(-Edad) ? 1 : 0);
+        public int Edad
+        {
+            get
+            {
+                var today = DateTime.Today;
+                var age = today.Year - Nacimiento.Year;
+                if (Nacimiento > today.AddYears(-age))
+                {
+                    age--;
+                }
+
+                return age;
+            }
+        }
 
         [MaxLength(255)]
         public string? Foto { get; set; }

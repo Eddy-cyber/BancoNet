@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -14,10 +15,13 @@ namespace BancoNet.Controllers
     public class ClientesController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly string _imagePath;
+        private readonly string _defaultImageName = "Default.png";
 
         public ClientesController(AppDbContext context)
         {
             _context = context;
+            _imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Images");
         }
 
         // GET: api/Clientes
@@ -31,27 +35,56 @@ namespace BancoNet.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Clientes>> GetClientes(long id)
         {
-            var clientes = await _context.Clientes.FindAsync(id);
+            var cliente = await _context.Clientes.FindAsync(id);
 
-            if (clientes == null)
+            if (cliente == null)
             {
                 return NotFound();
             }
 
-            return clientes;
+            return cliente;
         }
 
         // PUT: api/Clientes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutClientes(long id, Clientes clientes)
+        public async Task<IActionResult> PutClientes(long id, [FromForm] Clientes clientes, IFormFile? foto)
         {
             if (id != clientes.Id)
             {
-                return BadRequest();
+                return BadRequest("El ID del cliente no coincide.");
             }
 
-            _context.Entry(clientes).State = EntityState.Modified;
+            var existingClient = await _context.Clientes.FindAsync(id);
+            if (existingClient == null)
+            {
+                return NotFound();
+            }
+
+            existingClient.Nombre = clientes.Nombre;
+            existingClient.Telefono = clientes.Telefono;
+            existingClient.Nacimiento = clientes.Nacimiento;
+
+            if (foto != null)
+            {
+                var newFileName = Guid.NewGuid().ToString() + Path.GetExtension(foto.FileName);
+                var filePath = Path.Combine(_imagePath, newFileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await foto.CopyToAsync(stream);
+                }
+
+                if (!string.IsNullOrEmpty(existingClient.Foto) && existingClient.Foto != _defaultImageName)
+                {
+                    var oldFilePath = Path.Combine(_imagePath, existingClient.Foto);
+                    if (System.IO.File.Exists(oldFilePath))
+                    {
+                        System.IO.File.Delete(oldFilePath);
+                    }
+                }
+
+                existingClient.Foto = newFileName;
+            }
 
             try
             {
@@ -73,27 +106,72 @@ namespace BancoNet.Controllers
         }
 
         // POST: api/Clientes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Clientes>> PostClientes(Clientes clientes)
+        public async Task<ActionResult<Clientes>> PostClientes([FromForm] Clientes cliente, IFormFile? foto)
         {
-            _context.Clientes.Add(clientes);
-            await _context.SaveChangesAsync();
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-            return CreatedAtAction("GetClientes", new { id = clientes.Id }, clientes);
+            if (foto != null)
+            {
+                var newFileName = Guid.NewGuid().ToString() + Path.GetExtension(foto.FileName);
+                var filePath = Path.Combine(_imagePath, newFileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await foto.CopyToAsync(stream);
+                }
+
+                cliente.Foto = newFileName;
+            }
+            else
+            {
+                var defaultImagePath = Path.Combine(_imagePath, _defaultImageName);
+                if (!System.IO.File.Exists(defaultImagePath))
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { message = "La imagen predeterminada no existe." });
+                }
+
+                var newFileName = Guid.NewGuid().ToString() + Path.GetExtension(defaultImagePath);
+                var newFilePath = Path.Combine(_imagePath, newFileName);
+                System.IO.File.Copy(defaultImagePath, newFilePath);
+
+                cliente.Foto = newFileName;
+            }
+
+            _context.Clientes.Add(cliente);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error al agregar el cliente: " + ex.Message });
+            }
+
+            return CreatedAtAction(nameof(GetClientes), new { id = cliente.Id }, cliente);
         }
 
         // DELETE: api/Clientes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteClientes(long id)
         {
-            var clientes = await _context.Clientes.FindAsync(id);
-            if (clientes == null)
+            var cliente = await _context.Clientes.FindAsync(id);
+            if (cliente == null)
             {
                 return NotFound();
             }
 
-            _context.Clientes.Remove(clientes);
+            var filePath = Path.Combine(_imagePath, cliente.Foto);
+            if (System.IO.File.Exists(filePath) && cliente.Foto != _defaultImageName)
+            {
+                System.IO.File.Delete(filePath);
+            }
+
+            _context.Clientes.Remove(cliente);
             await _context.SaveChangesAsync();
 
             return NoContent();
