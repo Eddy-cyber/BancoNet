@@ -44,6 +44,7 @@ namespace BancoNet
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();
 
             app.MapControllers();
 

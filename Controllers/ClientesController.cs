@@ -16,26 +16,31 @@ namespace BancoNet.Controllers
     {
         private readonly AppDbContext _context;
         private readonly string _imagePath;
+        private readonly string _trashPath;
         private readonly string _defaultImageName = "Default.png";
 
         public ClientesController(AppDbContext context)
         {
             _context = context;
             _imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Images");
+            _trashPath = Path.Combine(_imagePath, "Trash");
+
+            if (!Directory.Exists(_trashPath))
+            {
+                Directory.CreateDirectory(_trashPath);
+            }
         }
 
-        // GET: api/Clientes
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Clientes>>> GetClientes()
         {
-            return await _context.Clientes.ToListAsync();
+            return await _context.Clientes.AsNoTracking().ToListAsync();
         }
 
-        // GET: api/Clientes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Clientes>> GetClientes(long id)
         {
-            var cliente = await _context.Clientes.FindAsync(id);
+            var cliente = await _context.Clientes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
 
             if (cliente == null)
             {
@@ -45,7 +50,6 @@ namespace BancoNet.Controllers
             return cliente;
         }
 
-        // PUT: api/Clientes/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutClientes(long id, [FromForm] Clientes clientes, IFormFile? foto)
         {
@@ -76,11 +80,7 @@ namespace BancoNet.Controllers
 
                 if (!string.IsNullOrEmpty(existingClient.Foto) && existingClient.Foto != _defaultImageName)
                 {
-                    var oldFilePath = Path.Combine(_imagePath, existingClient.Foto);
-                    if (System.IO.File.Exists(oldFilePath))
-                    {
-                        System.IO.File.Delete(oldFilePath);
-                    }
+                    MoveImageToTrash(existingClient.Foto);
                 }
 
                 existingClient.Foto = newFileName;
@@ -105,7 +105,6 @@ namespace BancoNet.Controllers
             return NoContent();
         }
 
-        // POST: api/Clientes
         [HttpPost]
         public async Task<ActionResult<Clientes>> PostClientes([FromForm] Clientes cliente, IFormFile? foto)
         {
@@ -155,7 +154,6 @@ namespace BancoNet.Controllers
             return CreatedAtAction(nameof(GetClientes), new { id = cliente.Id }, cliente);
         }
 
-        // DELETE: api/Clientes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteClientes(long id)
         {
@@ -165,10 +163,9 @@ namespace BancoNet.Controllers
                 return NotFound();
             }
 
-            var filePath = Path.Combine(_imagePath, cliente.Foto);
-            if (System.IO.File.Exists(filePath) && cliente.Foto != _defaultImageName)
+            if (!string.IsNullOrEmpty(cliente.Foto) && cliente.Foto != _defaultImageName)
             {
-                System.IO.File.Delete(filePath);
+                MoveImageToTrash(cliente.Foto);
             }
 
             _context.Clientes.Remove(cliente);
@@ -180,6 +177,17 @@ namespace BancoNet.Controllers
         private bool ClientesExists(long id)
         {
             return _context.Clientes.Any(e => e.Id == id);
+        }
+
+        private void MoveImageToTrash(string fileName)
+        {
+            var oldFilePath = Path.Combine(_imagePath, fileName);
+            var trashFilePath = Path.Combine(_trashPath, fileName);
+
+            if (System.IO.File.Exists(oldFilePath))
+            {
+                System.IO.File.Move(oldFilePath, trashFilePath);
+            }
         }
     }
 }
