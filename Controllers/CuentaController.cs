@@ -24,14 +24,15 @@ namespace BancoNet.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cuenta>>> GetCuentas()
         {
-            return await _context.Cuentas.ToListAsync();
+            return await _context.Cuentas.Include(c => c.Cliente).ToListAsync();
         }
 
         // GET: api/Cuenta/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Cuenta>> GetCuenta(long id)
         {
-            var cuenta = await _context.Cuentas.FindAsync(id);
+            var cuenta = await _context.Cuentas.Include(c => c.Cliente)
+                                               .FirstOrDefaultAsync(c => c.No_Cuenta == id);
 
             if (cuenta == null)
             {
@@ -42,7 +43,6 @@ namespace BancoNet.Controllers
         }
 
         // PUT: api/Cuenta/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCuenta(long id, Cuenta cuenta)
         {
@@ -73,10 +73,22 @@ namespace BancoNet.Controllers
         }
 
         // POST: api/Cuenta
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Cuenta>> PostCuenta(Cuenta cuenta)
         {
+            // Buscar al cliente relacionado por ClienteId
+            var cliente = await _context.Clientes.FindAsync(cuenta.ClienteId);
+
+            // Verificar si el cliente existe
+            if (cliente == null)
+            {
+                return BadRequest("El cliente no existe.");
+            }
+
+            // Relacionar la cuenta con el cliente
+            cuenta.Cliente = cliente;
+
+            // Agregar la cuenta a la base de datos
             _context.Cuentas.Add(cuenta);
             await _context.SaveChangesAsync();
 
@@ -105,3 +117,4 @@ namespace BancoNet.Controllers
         }
     }
 }
+
