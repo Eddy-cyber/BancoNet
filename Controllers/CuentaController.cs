@@ -48,7 +48,12 @@ namespace BancoNet.Controllers
         {
             if (id != cuenta.No_Cuenta)
             {
-                return BadRequest();
+                return BadRequest("El ID de la cuenta no coincide con el proporcionado.");
+            }
+
+            if (cuenta == null)
+            {
+                return BadRequest("La cuenta no puede ser nula.");
             }
 
             _context.Entry(cuenta).State = EntityState.Modified;
@@ -59,13 +64,14 @@ namespace BancoNet.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!CuentaExists(id))
+                var existingCuenta = await _context.Cuentas.FindAsync(id);
+                if (existingCuenta == null)
                 {
-                    return NotFound();
+                    return NotFound("La cuenta ha sido eliminada por otro usuario.");
                 }
                 else
                 {
-                    throw;
+                    return Conflict("La cuenta ha sido modificada por otro usuario. Por favor, actualiza y vuelve a intentar.");
                 }
             }
 
@@ -76,23 +82,23 @@ namespace BancoNet.Controllers
         [HttpPost]
         public async Task<ActionResult<Cuenta>> PostCuenta(Cuenta cuenta)
         {
-            // Buscar al cliente relacionado por ClienteId
+            if (cuenta == null)
+            {
+                return BadRequest("La cuenta no puede ser nula.");
+            }
+
             var cliente = await _context.Clientes.FindAsync(cuenta.ClienteId);
 
-            // Verificar si el cliente existe
             if (cliente == null)
             {
                 return BadRequest("El cliente no existe.");
             }
-
-            // Relacionar la cuenta con el cliente
             cuenta.Cliente = cliente;
 
-            // Agregar la cuenta a la base de datos
             _context.Cuentas.Add(cuenta);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetCuenta", new { id = cuenta.No_Cuenta }, cuenta);
+            return CreatedAtAction(nameof(GetCuenta), new { id = cuenta.No_Cuenta }, cuenta);
         }
 
         // DELETE: api/Cuenta/5
@@ -117,4 +123,3 @@ namespace BancoNet.Controllers
         }
     }
 }
-

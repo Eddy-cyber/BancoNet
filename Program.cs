@@ -9,8 +9,12 @@ namespace BancoNet
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // builder.Services.AddDbContext<AppDbContext>(options =>
+            //     options.UseInMemoryDatabase("BancoNetInMemoryDb"));
+
+            var connectionString = builder.Configuration.GetConnectionString("BancoNetDb");
             builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseInMemoryDatabase("BancoNetInMemoryDb"));
+                options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 23))));
 
             builder.Services.AddControllers();
 
@@ -27,7 +31,6 @@ namespace BancoNet
                         .AllowAnyMethod();
                 });
             });
-
 
             var app = builder.Build();
 

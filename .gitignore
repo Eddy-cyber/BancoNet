@@ -10,3 +10,5 @@ node_modules/
 
 # Archivos temporales de Visual Studio Code
 .vscode/
+wwwroot/Images/
+
