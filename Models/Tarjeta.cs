@@ -9,6 +9,9 @@ namespace BancoNet.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
         
+        public string? Tipo_Tarjeta{ get; set; }
+        
+        public string? Marca_Tarjeta{ get; set; }
         public long No_Tarjeta { get; set; }
         
         [Column(TypeName = "DATE")]
@@ -20,6 +23,6 @@ namespace BancoNet.Models
         public string? Codigo_Seguridad { get; set; }
         public long? Limite_Credito { get; set; }
         
-        public Cuenta Cuenta { get; set; }
+        public Cuenta? Cuenta { get; set; }
     }
 }
