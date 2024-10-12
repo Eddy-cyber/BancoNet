@@ -15,8 +15,14 @@ namespace BancoNet.Models
         
         public long? Telefono { get; set; }
 
+        private DateTime _nacimiento;
+
         [Column(TypeName = "DATE")]
-        public DateTime Nacimiento { get; set; }
+        public DateTime Nacimiento
+        {
+            get => _nacimiento;
+            set => _nacimiento = value.Date;
+        }
 
         public int Edad
         {

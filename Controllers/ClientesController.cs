@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BancoNet.Models;
+using OfficeOpenXml;
 
 namespace BancoNet.Controllers
 {
@@ -187,6 +188,52 @@ namespace BancoNet.Controllers
             if (System.IO.File.Exists(oldFilePath))
             {
                 System.IO.File.Move(oldFilePath, trashFilePath);
+            }
+        }
+        [HttpGet("exportar-clientes")]
+        public async Task<IActionResult> ExportarClientes()
+        {
+            var clientes = await _context.Clientes.AsNoTracking().ToListAsync();
+
+            using (var package = new ExcelPackage())
+            {
+                var worksheet = package.Workbook.Worksheets.Add("Clientes");
+
+                worksheet.Cells[1, 1].Value = "ID";
+                worksheet.Cells[1, 2].Value = "Nombre";
+                worksheet.Cells[1, 3].Value = "Teléfono";
+                worksheet.Cells[1, 4].Value = "Fecha de Nacimiento";
+                worksheet.Cells[1, 5].Value = "Edad";
+
+                worksheet.Column(1).Width = 15;
+                worksheet.Column(2).Width = 30;
+                worksheet.Column(3).Width = 15;
+                worksheet.Column(4).Width = 20;
+                worksheet.Column(5).Width = 10;
+
+                worksheet.Cells[1, 1, 1, 5].Style.Font.Bold = true;
+
+                for (int i = 0; i < clientes.Count; i++)
+                {
+                    worksheet.Cells[i + 2, 1].Value = clientes[i].Id;
+                    worksheet.Cells[i + 2, 2].Value = clientes[i].Nombre ?? "N/A";
+                    worksheet.Cells[i + 2, 3].Value = clientes[i].Telefono?.ToString() ?? "N/A";
+                    worksheet.Cells[i + 2, 4].Value = clientes[i].Nacimiento; // Asignar como DateTime
+
+                    // Formatear la celda para mostrar solo la fecha
+                    worksheet.Cells[i + 2, 4].Style.Numberformat.Format = "dd-MM-yyyy"; // Cambia el formato aquí
+                    
+                    var edad = DateTime.Now.Year - clientes[i].Nacimiento.Year;
+                    worksheet.Cells[i + 2, 5].Value = edad;
+                }
+
+                var stream = new MemoryStream();
+                package.SaveAs(stream);
+                stream.Position = 0;
+
+                var fileName = "Clientes.xlsx";
+                var mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                return File(stream, mimeType, fileName);
             }
         }
     }

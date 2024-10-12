@@ -16,3 +16,5 @@ dotnet tool install -g dotnet-aspnet-codegenerator
 dotnet aspnet-codegenerator controller
  -name ClientesController -async -api -m Clientes -dc AppDbContext --relativeFolderPath Controllers
 
+#Para exportar a excell
+dotnet add package EPPlus
