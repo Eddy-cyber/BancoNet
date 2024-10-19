@@ -1,3 +1,4 @@
+//Controllers/CuentaControllers.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -113,6 +114,15 @@ namespace BancoNet.Controllers
                 return BadRequest("La cuenta no puede ser nula.");
             }
 
+            // Verificar si el cliente ya tiene una cuenta del mismo tipo
+            var cuentaExistente = await _context.Cuentas
+                                                .FirstOrDefaultAsync(c => c.ClienteId == cuentaDto.ClienteId 
+                                                                    && c.Tipo == cuentaDto.Tipo);
+            if (cuentaExistente != null)
+            {
+                return Conflict("El cliente ya tiene una cuenta de este tipo."); // Retornar error 409 (Conflicto)
+            }
+
             var cliente = await _context.Clientes.FindAsync(cuentaDto.ClienteId);
             if (cliente == null)
             {
@@ -134,6 +144,7 @@ namespace BancoNet.Controllers
 
             return CreatedAtAction(nameof(GetCuenta), new { id = cuenta.No_Cuenta }, cuentaDto);
         }
+
 
         // DELETE: api/Cuenta/5
         [HttpDelete("{id}")]

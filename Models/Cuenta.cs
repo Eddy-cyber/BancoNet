@@ -1,8 +1,11 @@
+//Models/Cuenta.cs
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace BancoNet.Models
 {
+    [Index(nameof(ClienteId), nameof(Tipo), IsUnique = true)]
     public class Cuenta
     {
         [Key]
@@ -17,6 +20,6 @@ namespace BancoNet.Models
         public Clientes? Cliente { get; set; }
         public long ClienteId { get; set; }
 
-        public Tarjeta? Tarjeta { get; set; }
-    }
+        public Tarjeta? Tarjeta { get; set; }
+    }
 }
