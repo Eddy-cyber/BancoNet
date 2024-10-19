@@ -7,14 +7,14 @@ namespace BancoNet.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public long No_Cuenta { get; set; } // Usar long si es clave primaria
+        public long No_Cuenta { get; set; }
 
         public string? Tipo { get; set; }
         public long? Saldo { get; set; }
-        public string? InfoTarjeta { get; set; }
+        public string? Beneficiarios { get; set; }
 
         [ForeignKey("ClienteId")]
-        public Clientes Cliente { get; set; }
+        public Clientes? Cliente { get; set; }
         public long ClienteId { get; set; }
 
         public Tarjeta? Tarjeta { get; set; }

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BancoNet.Models;
+using BancoNet.Dtos;
 
 namespace BancoNet.Controllers
 {
@@ -22,14 +23,25 @@ namespace BancoNet.Controllers
 
         // GET: api/Cuenta
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Cuenta>>> GetCuentas()
+        public async Task<ActionResult<IEnumerable<CuentaDto>>> GetCuentas()
         {
-            return await _context.Cuentas.Include(c => c.Cliente).ToListAsync();
+            var cuentas = await _context.Cuentas.Include(c => c.Cliente).ToListAsync();
+
+            var cuentasDto = cuentas.Select(cuenta => new CuentaDto
+            {
+                No_Cuenta = cuenta.No_Cuenta,
+                Tipo = cuenta.Tipo,
+                Saldo = cuenta.Saldo,
+                Beneficiarios = cuenta.Beneficiarios,
+                ClienteId = cuenta.ClienteId
+            }).ToList();
+
+            return cuentasDto;
         }
 
         // GET: api/Cuenta/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Cuenta>> GetCuenta(long id)
+        public async Task<ActionResult<CuentaDto>> GetCuenta(long id)
         {
             var cuenta = await _context.Cuentas.Include(c => c.Cliente)
                                                .FirstOrDefaultAsync(c => c.No_Cuenta == id);
@@ -39,22 +51,37 @@ namespace BancoNet.Controllers
                 return NotFound();
             }
 
-            return cuenta;
+            var cuentaDto = new CuentaDto
+            {
+                No_Cuenta = cuenta.No_Cuenta,
+                Tipo = cuenta.Tipo,
+                Saldo = cuenta.Saldo,
+                Beneficiarios = cuenta.Beneficiarios,
+                ClienteId = cuenta.ClienteId
+            };
+
+            return cuentaDto;
         }
 
         // PUT: api/Cuenta/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCuenta(long id, Cuenta cuenta)
+        public async Task<IActionResult> PutCuenta(long id, CuentaDto cuentaDto)
         {
-            if (id != cuenta.No_Cuenta)
+            if (id != cuentaDto.No_Cuenta)
             {
                 return BadRequest("El ID de la cuenta no coincide con el proporcionado.");
             }
 
+            var cuenta = await _context.Cuentas.FindAsync(id);
             if (cuenta == null)
             {
-                return BadRequest("La cuenta no puede ser nula.");
+                return NotFound();
             }
+
+            cuenta.Tipo = cuentaDto.Tipo;
+            cuenta.Saldo = cuentaDto.Saldo;
+            cuenta.Beneficiarios = cuentaDto.Beneficiarios;
+            cuenta.ClienteId = cuentaDto.ClienteId;
 
             _context.Entry(cuenta).State = EntityState.Modified;
 
@@ -64,14 +91,13 @@ namespace BancoNet.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                var existingCuenta = await _context.Cuentas.FindAsync(id);
-                if (existingCuenta == null)
+                if (!CuentaExists(id))
                 {
-                    return NotFound("La cuenta ha sido eliminada por otro usuario.");
+                    return NotFound();
                 }
                 else
                 {
-                    return Conflict("La cuenta ha sido modificada por otro usuario. Por favor, actualiza y vuelve a intentar.");
+                    throw;
                 }
             }
 
@@ -80,25 +106,33 @@ namespace BancoNet.Controllers
 
         // POST: api/Cuenta
         [HttpPost]
-        public async Task<ActionResult<Cuenta>> PostCuenta(Cuenta cuenta)
+        public async Task<ActionResult<CuentaDto>> PostCuenta(CuentaDto cuentaDto)
         {
-            if (cuenta == null)
+            if (cuentaDto == null)
             {
                 return BadRequest("La cuenta no puede ser nula.");
             }
 
-            var cliente = await _context.Clientes.FindAsync(cuenta.ClienteId);
-
+            var cliente = await _context.Clientes.FindAsync(cuentaDto.ClienteId);
             if (cliente == null)
             {
                 return BadRequest("El cliente no existe.");
             }
-            cuenta.Cliente = cliente;
+
+            var cuenta = new Cuenta
+            {
+                Tipo = cuentaDto.Tipo,
+                Saldo = cuentaDto.Saldo,
+                Beneficiarios = cuentaDto.Beneficiarios,
+                ClienteId = cuentaDto.ClienteId
+            };
 
             _context.Cuentas.Add(cuenta);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetCuenta), new { id = cuenta.No_Cuenta }, cuenta);
+            cuentaDto.No_Cuenta = cuenta.No_Cuenta;
+
+            return CreatedAtAction(nameof(GetCuenta), new { id = cuenta.No_Cuenta }, cuentaDto);
         }
 
         // DELETE: api/Cuenta/5
@@ -120,6 +154,20 @@ namespace BancoNet.Controllers
         private bool CuentaExists(long id)
         {
             return _context.Cuentas.Any(e => e.No_Cuenta == id);
+        }
+
+        [HttpGet("Clientes")]
+        public async Task<ActionResult<IEnumerable<ClienteDto>>> GetClientes()
+        {
+            var clientes = await _context.Clientes.ToListAsync();
+            var clientesDto = clientes.Select(cliente => new ClienteDto
+            {
+                Id = cliente.Id,
+                Nombre = cliente.Nombre,
+                Foto = cliente.Foto
+            }).ToList();
+
+            return clientesDto;
         }
     }
 }
